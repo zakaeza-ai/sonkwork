@@ -345,10 +345,11 @@ async function askGemini(kind,file){
   const image=await blobToB64(await shrinkColor(file));
   const ctl=new AbortController();const t=setTimeout(()=>ctl.abort(),30000);
   try{const r=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({kind,image}),signal:ctl.signal});
-    if(!r.ok){const e=new Error("http");e.status=r.status;throw e}return await r.json()}finally{clearTimeout(t)}
+    if(!r.ok){const j=await r.json().catch(()=>({}));const e=new Error(j.error||("HTTP "+r.status));e.status=r.status;throw e}return await r.json()}finally{clearTimeout(t)}
 }
+let aiErr="";
 async function readEnvelope(file){
-  $("ocrLines").innerHTML="";
+  $("ocrLines").innerHTML="";aiErr="";
   ocrStatus("กำลังอ่านหน้าซองด้วย AI...");
   try{
     const r=await askGemini("envelope",file);
@@ -362,7 +363,8 @@ async function readEnvelope(file){
     }
     ocrStatus("AI อ่านชื่อไม่ออก ลองถ่ายใหม่ให้ชัดขึ้น");return;
   }catch(e){
-    if(e.status===429){ocrStatus("โควตา AI วันนี้หมดแล้ว ใช้ตัวอ่านในเครื่องแทน...")}
+    aiErr=e.status===429?"โควตา AI วันนี้หมดแล้ว":e.name==="AbortError"?"AI ตอบช้าเกินไป":"AI อ่านไม่สำเร็จ ("+String(e.message).slice(0,80)+")";
+    ocrStatus(aiErr+" ใช้ตัวอ่านในเครื่องแทน...")
   }
   try{
     const w=await getWorker();ocrStatus("กำลังอ่านหน้าซอง...");
@@ -376,7 +378,7 @@ async function readEnvelope(file){
     if(rest.length&&!$("eNote").value)$("eNote").value=rest.find(l=>/(ม\.|หมู่|ต\.|อ\.|จ\.|บ้าน)/.test(l))||"";
     const amt=(data.text.replace(/,/g,"").match(/(\d{2,6})\s*(บาท|฿|-)/)||[])[1];
     if(amt&&!+$("eAmount").value)$("eAmount").value=amt;
-    ocrStatus("อ่านได้ตามนี้ ถ้าชื่อผิด แตะบรรทัดที่ถูกด้านล่าง หรือแก้ในช่องชื่อ");
+    ocrStatus((aiErr?aiErr+" · ":"")+"ตัวอ่านในเครื่องอ่านได้ตามนี้ ถ้าชื่อผิด แตะบรรทัดที่ถูกด้านล่าง");
     $("ocrLines").innerHTML=lines.slice(0,8).map(l=>`<button type="button" data-line="${esc(l)}">${esc(l)}</button>`).join("");
   }catch(e){ocrStatus("อ่านรูปไม่สำเร็จ ต้องต่อเน็ตครั้งแรกเพื่อโหลดตัวอ่าน หรือพิมพ์ชื่อเองได้เลย")}
 }

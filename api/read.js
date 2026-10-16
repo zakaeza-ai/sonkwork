@@ -68,12 +68,15 @@ module.exports = async function handler(req, res) {
   let lastStatus = 502, lastError = 'read failed';
   for (const model of models) {
     const isGemma = model.startsWith('gemma');
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 20000); // skip a model that is too slow
     try {
       const r = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+          signal: ctl.signal,
           body: JSON.stringify({
             contents: [{ role: 'user', parts: [
               { inline_data: { mime_type: 'image/jpeg', data: image } },
@@ -96,7 +99,9 @@ module.exports = async function handler(req, res) {
       res.setHeader('X-Model', model);
       return res.status(200).json(out);
     } catch (e) {
-      lastError = model + ': ' + (e.message || 'failed');
+      lastError = model + ': ' + (e.name === 'AbortError' ? 'timeout' : (e.message || 'failed'));
+    } finally {
+      clearTimeout(timer);
     }
   }
   console.error('all models failed:', lastError);

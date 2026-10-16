@@ -343,7 +343,7 @@ async function shrinkColor(file){return new Promise((res,rej)=>{const img=new Im
   img.onerror=()=>rej(new Error("img"));img.src=url})}
 async function askGemini(kind,file){
   const image=await blobToB64(await shrinkColor(file));
-  const ctl=new AbortController();const t=setTimeout(()=>ctl.abort(),30000);
+  const ctl=new AbortController();const t=setTimeout(()=>ctl.abort(),60000);
   try{const r=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({kind,image}),signal:ctl.signal});
     if(!r.ok){const j=await r.json().catch(()=>({}));const e=new Error(j.error||("HTTP "+r.status));e.status=r.status;throw e}return await r.json()}finally{clearTimeout(t)}
 }

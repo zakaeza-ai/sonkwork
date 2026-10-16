@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1D2733">
+<title>สมุดซองช่วยงาน</title>
+<meta name="description" content="บันทึกเงินซองงานแต่ง งานบวช งานศพ ฟรี ถ่ายรูปอ่านชื่อหน้าซอง สแกนนับธนบัตร ค้นชื่อดูยอดช่วยงาน บัญชีรับ-จ่าย">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+Thai:wght@500;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap">
+<style>
+/* Layout: one-column phone ledger, sticky event header, fixed bottom tabs; envelope cards with a flap edge */
+:root{
+  --bg:#F3F5F2; --surface:#FFFFFF; --ink:#1D2733; --muted:#5E6B72; --line:#DCE2DD;
+  --accent:#B5761A; --accent-ink:#FFFFFF; --accent-soft:#F6EAD6;
+  --in:#2E7D4F; --out:#B23A2E; --in-soft:#E3F1E8; --out-soft:#F7E3E0;
+  --display:"Noto Serif Thai", Georgia, serif;
+  --body:"IBM Plex Sans Thai", "Sarabun", system-ui, sans-serif;
+  --tab-h:64px; color-scheme:light;
+  padding-top:env(safe-area-inset-top,0px);
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#141A20; --surface:#1D252D; --ink:#E9EEF0; --muted:#9AA7AE; --line:#2E3942;
+  --accent:#E3A440; --accent-ink:#1A1206; --accent-soft:#3A2D18;
+  --in:#5FC28A; --out:#F07F72; --in-soft:#1C3326; --out-soft:#3A2220; color-scheme:dark}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:0 calc(var(--tab-h) + 24px + env(safe-area-inset-bottom,0px))}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+img{max-width:100%}
+.num{font-variant-numeric:tabular-nums}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);
+  display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:14px 10px;border-bottom:1px solid var(--line)}
+h1{font-family:var(--display);font-size:1.25rem;margin:0;letter-spacing:.01em}
+.evsel{max-width:55%;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:.9rem}
+main{max-width:640px;margin:0 auto}
+section.view{display:flex;flex-direction:column;gap:16px;padding-top:16px}
+h2{font-family:var(--display);font-size:1.1rem;margin:0}
+p{margin:0}
+.label{font-size:.78rem;letter-spacing:.06em;color:var(--muted)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.hero{background:var(--ink);color:var(--bg);border:none;position:relative;overflow:hidden}
+.hero .label{color:inherit;opacity:.7}
+.hero .big{font-family:var(--display);font-size:2.3rem;line-height:1.1}
+.hero::after{content:"";position:absolute;right:-30px;top:-40px;width:150px;height:110px;border:2px solid var(--accent);transform:rotate(45deg);opacity:.5}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px}
+.stat b{display:block;font-size:1.25rem;font-weight:600}
+.stat.in b{color:var(--in)} .stat.out b{color:var(--out)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row>*{min-width:0}
+.grow{flex:1 1 140px}
+input,select,textarea{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:11px 12px;font-size:1rem}
+.field{display:flex;flex-direction:column;gap:4px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 14px;font-weight:500}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--out);border-color:var(--out)}
+.btn.block{width:100%;padding:13px}
+.scanbtn{display:flex;align-items:center;justify-content:center;gap:8px;border:1.5px dashed var(--accent);background:var(--accent-soft);color:var(--ink);border-radius:12px;padding:14px;font-weight:600;flex:1 1 140px}
+.scanbtn svg{width:22px;height:22px;stroke:var(--accent);fill:none;stroke-width:1.8}
+.hint{font-size:.85rem;color:var(--muted)}
+.status{font-size:.88rem;padding:8px 12px;border-radius:8px;background:var(--accent-soft)}
+.ocrlines{display:flex;flex-wrap:wrap;gap:6px}
+.ocrlines button{border:1px solid var(--accent);background:var(--surface);border-radius:999px;padding:4px 12px;font-size:.9rem;max-width:100%;overflow-wrap:anywhere;text-align:left}
+.denoms{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.denom{display:flex;align-items:center;justify-content:space-between;gap:6px;border:1px solid var(--line);border-radius:10px;padding:6px 8px;background:var(--bg)}
+.chip{font-weight:600;min-width:52px;text-align:center;border-radius:6px;padding:2px 6px;color:#fff;font-size:.85rem;border:none}
+.d1000{background:#7A6A55}.d500{background:#7B4A9A}.d100{background:#B5352B}.d50{background:#2F62A8}.d20{background:#2E8A57}
+.denom .ctl{display:flex;align-items:center;gap:4px}
+.denom .ctl button{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:var(--surface);font-weight:600}
+.denom .ctl span{min-width:22px;text-align:center}
+.amount-big{font-family:var(--display);font-size:1.8rem;color:var(--accent)}
+.list{display:flex;flex-direction:column;gap:8px}
+.env{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;text-align:left;width:100%;position:relative}
+.env::before{content:"";position:absolute;left:0;top:0;width:100%;height:10px;background:linear-gradient(170deg,transparent 48%,var(--line) 50%,transparent 52%),linear-gradient(190deg,transparent 48%,var(--line) 50%,transparent 52%);background-size:50% 100%;background-repeat:no-repeat;background-position:left,right;opacity:.7;pointer-events:none}
+.env .no{font-size:.75rem;color:var(--muted);min-width:34px}
+.env .who{flex:1;min-width:0}
+.env .who b{display:block;font-weight:600;overflow-wrap:anywhere}
+.env .who small{color:var(--muted);overflow-wrap:anywhere}
+.env .amt{font-weight:600;white-space:nowrap}
+.amt.in{color:var(--in)} .amt.out{color:var(--out)}
+.pill{display:inline-block;font-size:.75rem;padding:1px 8px;border-radius:999px;background:var(--accent-soft)}
+.pill.in{background:var(--in-soft);color:var(--in)} .pill.out{background:var(--out-soft);color:var(--out)}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{flex:1;border:none;background:var(--surface);padding:10px}
+.seg button[aria-pressed="true"].in{background:var(--in);color:#fff}
+.seg button[aria-pressed="true"].out{background:var(--out);color:#fff}
+.seg button[aria-pressed="true"].neu{background:var(--ink);color:var(--bg)}
+.matches{display:flex;flex-direction:column;gap:4px}
+.match{font-size:.88rem;padding:6px 10px;border-radius:8px;background:var(--in-soft)}
+.empty{text-align:center;color:var(--muted);padding:24px 12px;border:1.5px dashed var(--line);border-radius:12px}
+.bars{display:flex;flex-direction:column;gap:6px}
+.bar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 8px;font-size:.9rem}
+.bar i{grid-column:1/-1;height:6px;border-radius:3px;background:var(--line);position:relative;overflow:hidden}
+.bar i em{position:absolute;inset:0 auto 0 0;background:var(--out);border-radius:3px}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tag{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:4px 6px 4px 12px;background:var(--bg);font-size:.9rem}
+.tag button{border:none;background:transparent;width:24px;height:24px;border-radius:50%;color:var(--muted)}
+.tag.preset{padding:4px 12px;border-style:dashed}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);
+  display:grid;grid-template-columns:repeat(5,1fr);padding-bottom:env(safe-area-inset-bottom,0px);
+  padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+nav.tabs button{border:none;background:transparent;height:var(--tab-h);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:.75rem;color:var(--muted)}
+nav.tabs svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8}
+nav.tabs button[aria-current="true"]{color:var(--accent);font-weight:600}
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--surface);width:100%;max-width:640px;max-height:92%;overflow:auto;border-radius:18px 18px 0 0;
+  padding:18px max(16px,env(safe-area-inset-right,0px)) calc(18px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:12px}
+.cam{position:relative;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:4/3;max-width:100%}
+.cam video{width:100%;height:100%;object-fit:cover;display:block}
+.cam .frame{position:absolute;inset:18% 10%;border:2px dashed rgba(255,255,255,.85);border-radius:8px;pointer-events:none}
+.cam .det{position:absolute;left:10px;top:10px;padding:4px 10px;border-radius:8px;color:#fff;font-weight:600;background:rgba(0,0,0,.55)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--tab-h) + 16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;z-index:30;font-size:.9rem;max-width:90%}
+@media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
+</style>
+</head>
+<body>
+<header>
+  <h1>สมุดซองช่วยงาน</h1>
+  <select id="evSel" class="evsel" aria-label="เลือกงาน"></select>
+</header>
+
+<main>
+  <!-- ภาพรวม -->
+  <section class="view" id="v-home">
+    <div class="panel hero">
+      <span class="label" id="hEvName">ยอดเงินคงเหลือ</span>
+      <span class="big num" id="hBalance">฿0</span>
+      <span class="num" id="hSub" style="opacity:.8;font-size:.9rem"></span>
+    </div>
+    <div class="grid2">
+      <div class="stat in"><span class="label">เงินซองช่วยงาน</span><b class="num" id="sDon">0</b><span class="hint num" id="sDonN"></span></div>
+      <div class="stat in"><span class="label">รายรับอื่น</span><b class="num" id="sIn">0</b></div>
+      <div class="stat out"><span class="label">รายจ่าย</span><b class="num" id="sOut">0</b></div>
+      <div class="stat"><span class="label">ผู้ช่วยงาน</span><b class="num" id="sPeople">0</b><span class="hint">คน</span></div>
+    </div>
+    <div class="panel">
+      <h2>นับธนบัตรรวมจากซอง</h2>
+      <p class="hint">ใช้เทียบกับเงินสดในมือ (นับเฉพาะซองที่บันทึกชนิดธนบัตรไว้)</p>
+      <div class="denoms" id="hDenoms"></div>
+    </div>
+    <div class="panel">
+      <h2>รายจ่ายตามหมวด</h2>
+      <div class="bars" id="hBars"></div>
+    </div>
+    <div class="row">
+      <button class="btn primary grow" data-go="envelope">+ รับซองใหม่</button>
+      <button class="btn grow" id="btnExport">ส่งออก Excel (CSV)</button>
+    </div>
+  </section>
+
+  <!-- รับซอง -->
+  <section class="view" id="v-envelope" hidden>
+    <div class="panel">
+      <h2 id="envTitle">รับซองใหม่</h2>
+      <div class="row">
+        <label class="scanbtn"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 7l9 6 9-6"/></svg>ถ่ายหน้าซอง
+          <input type="file" accept="image/*" capture="environment" id="fEnv" hidden></label>
+        <button class="scanbtn" id="btnCash" type="button"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 9v6M18 9v6"/></svg>สแกนธนบัตร</button>
+      </div>
+      <div class="status" id="ocrStatus" hidden></div>
+      <div class="ocrlines" id="ocrLines"></div>
+      <div class="field"><label class="label" for="eName">ชื่อผู้ช่วยงาน (ตามหน้าซอง)</label>
+        <input id="eName" autocomplete="off" placeholder="เช่น นายสมชาย ใจดี"></div>
+      <div class="matches" id="eMatches"></div>
+      <div class="field"><label class="label" for="eNote">ที่อยู่ / หมายเหตุ</label>
+        <input id="eNote" placeholder="เช่น บ้านนาแก ม.3 / ฝากมากับ..."></div>
+      <span class="label">นับธนบัตร</span>
+      <div class="denoms" id="eDenoms"></div>
+      <div class="row">
+        <div class="field grow"><label class="label" for="eCoins">เหรียญ / เศษ (บาท)</label><input id="eCoins" type="number" inputmode="numeric" min="0" placeholder="0"></div>
+        <div class="field grow"><label class="label" for="eAmount">ยอดเงินในซอง</label><input id="eAmount" type="number" inputmode="numeric" min="0" placeholder="0" class="num"></div>
+      </div>
+      <div class="row">
+        <button class="btn primary grow" id="eSave">บันทึกซอง</button>
+        <button class="btn ghost" id="eClear">ล้าง</button>
+      </div>
+    </div>
+    <div class="row" style="justify-content:space-between"><h2>ซองล่าสุดของงานนี้</h2><span class="hint num" id="envCount"></span></div>
+    <div class="list" id="envList"></div>
+  </section>
+
+  <!-- ค้นชื่อ -->
+  <section class="view" id="v-people" hidden>
+    <input id="qName" type="search" placeholder="พิมพ์ชื่อเพื่อค้นหา" autocomplete="off">
+    <div class="seg" role="group" aria-label="ขอบเขต">
+      <button class="neu" data-scope="all" aria-pressed="true">ทุกงาน</button>
+      <button class="neu" data-scope="ev" aria-pressed="false">เฉพาะงานนี้</button>
+    </div>
+    <div class="list" id="peopleList"></div>
+  </section>
+
+  <!-- รับ/จ่าย -->
+  <section class="view" id="v-money" hidden>
+    <div class="panel">
+      <h2>บันทึกรายรับ / รายจ่าย</h2>
+      <div class="seg" role="group" aria-label="ประเภท">
+        <button class="out" data-tt="out" aria-pressed="true">รายจ่าย</button>
+        <button class="in" data-tt="in" aria-pressed="false">รายรับ</button>
+      </div>
+      <div class="row">
+        <div class="field grow"><label class="label" for="tCat">หมวด</label><select id="tCat"></select></div>
+        <div class="field grow"><label class="label" for="tAmount">จำนวนเงิน</label><input id="tAmount" type="number" inputmode="decimal" min="0" placeholder="0" class="num"></div>
+      </div>
+      <div class="field"><label class="label" for="tNote">รายละเอียด</label><input id="tNote" placeholder="เช่น ค่าน้ำแข็ง 3 กระสอบ"></div>
+      <div class="field" id="tPersonWrap" hidden><label class="label" for="tPerson">ช่วยงานคืนให้ใคร</label><input id="tPerson" placeholder="ชื่อ"></div>
+      <button class="btn primary block" id="tSave">บันทึก</button>
+    </div>
+    <div class="row" style="justify-content:space-between"><h2>รายการของงานนี้</h2>
+      <select id="tFilter" style="width:auto"><option value="">ทุกหมวด</option></select></div>
+    <div class="list" id="txList"></div>
+  </section>
+
+  <!-- ตั้งค่า -->
+  <section class="view" id="v-settings" hidden>
+    <div class="panel">
+      <h2>งาน</h2>
+      <div class="tags" id="evTags"></div>
+      <div class="tags">
+        <button class="tag preset" data-preset="งานแต่ง">+ งานแต่ง</button>
+        <button class="tag preset" data-preset="งานบวช">+ งานบวช</button>
+        <button class="tag preset" data-preset="งานศพ">+ งานศพ</button>
+        <button class="tag preset" data-preset="งานขึ้นบ้านใหม่">+ งานขึ้นบ้านใหม่</button>
+        <button class="tag preset" data-preset="งานทำบุญ">+ งานทำบุญ</button>
+      </div>
+      <div class="row"><input id="newEv" class="grow" placeholder="ชื่องาน เช่น งานบวชลูกชาย ธ.ค. 69"><button class="btn" id="addEv">เพิ่มงาน</button></div>
+    </div>
+    <div class="panel">
+      <h2>หมวดรายจ่าย</h2>
+      <div class="tags" id="catOut"></div>
+      <div class="row"><input id="newOut" class="grow" placeholder="หมวดใหม่"><button class="btn" data-addcat="out">เพิ่ม</button></div>
+    </div>
+    <div class="panel">
+      <h2>หมวดรายรับ</h2>
+      <p class="hint">เงินซองช่วยงานนับแยกให้อยู่แล้ว</p>
+      <div class="tags" id="catIn"></div>
+      <div class="row"><input id="newIn" class="grow" placeholder="หมวดใหม่"><button class="btn" data-addcat="in">เพิ่ม</button></div>
+    </div>
+    <div class="panel">
+      <h2>สำรองข้อมูล</h2>
+      <p class="hint">ข้อมูลทั้งหมดเก็บในมือถือเครื่องนี้เท่านั้น ไม่ส่งขึ้นเซิร์ฟเวอร์ ควรสำรองไว้หลังจบงาน และใช้ไฟล์นี้ย้ายไปเครื่องใหม่ได้</p>
+      <div class="row">
+        <button class="btn grow" id="btnBackup">บันทึกไฟล์สำรอง</button>
+        <label class="btn grow" style="text-align:center">กู้คืนจากไฟล์<input type="file" accept=".json,application/json" id="fRestore" hidden></label>
+      </div>
+    </div>
+  </section>
+</main>
+
+<nav class="tabs" aria-label="เมนู">
+  <button data-go="home" aria-current="true"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9H4z"/></svg>ภาพรวม</button>
+  <button data-go="envelope"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 7l9 6 9-6"/></svg>รับซอง</button>
+  <button data-go="people"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>ค้นชื่อ</button>
+  <button data-go="money"><svg viewBox="0 0 24 24"><path d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3"/></svg>รับ/จ่าย</button>
+  <button data-go="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>ตั้งค่า</button>
+</nav>
+
+<div id="sheetHost"></div>
+
+<script>
+(function(){
+const DENOMS=[1000,500,100,50,20];
+const RETURN_CAT="ช่วยงานคืน";
+const DEFAULT_SETTINGS={events:[{id:"ev1",name:"งานของเรา"}],current:"ev1",
+  catsOut:["อาหาร","เครื่องดื่ม/น้ำแข็ง","เต็นท์/เก้าอี้/เครื่องเสียง","ปัจจัยถวายพระ","ดอกไม้/พวงหรีด",RETURN_CAT,"อื่นๆ"],
+  catsIn:["เงินบริจาคทั่วไป","ขายของ","อื่นๆ"]};
+let items={}; let settings=JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+let txType="out"; let scope="all"; let editingId=null;
+let envCounts={1000:0,500:0,100:0,50:0,20:0};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const baht=n=>"฿"+(Math.round((+n||0)*100)/100).toLocaleString("th-TH");
+const norm=s=>String(s||"").replace(/\s+/g," ").trim();
+const key=s=>norm(s).toLowerCase().replace(/^(นาย|นางสาว|นาง|น\.ส\.|ด\.ช\.|ด\.ญ\.|คุณ)\s*/,"").replace(/\s/g,"");
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const fmtDate=ts=>new Date(ts).toLocaleString("th-TH",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+function toast(msg){const t=document.createElement("div");t.className="toast";t.textContent=msg;document.body.append(t);setTimeout(()=>t.remove(),2200)}
+
+/* ---------- storage: this phone only ---------- */
+const LS="sompoi-v1";
+function load(){try{const d=JSON.parse(localStorage.getItem(LS)||"null");if(d){items=d.items||{};settings=Object.assign({},DEFAULT_SETTINGS,d.settings||{})}}catch(e){}}
+function persist(){try{localStorage.setItem(LS,JSON.stringify({items,settings}))}catch(e){toast("บันทึกไม่สำเร็จ พื้นที่ในเครื่องอาจเต็ม")}}
+function putItem(k,v){items[k]=v;persist();render()}
+function delItem(k){delete items[k];persist();render()}
+function saveSettings(){persist();render()}
+if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
+
+function downloadFile(name,text,type){
+  const blob=new Blob([text],{type});const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);a.download=name;document.body.append(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);
+}
+
+/* ---------- envelope OCR (Tesseract, runs in the phone) ---------- */
+let ocrWorker=null;
+function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement("script");s.src=src;s.onload=res;s.onerror=rej;document.head.append(s)})}
+function ocrStatus(msg){const s=$("ocrStatus");s.hidden=!msg;s.textContent=msg||""}
+async function getWorker(){
+  if(ocrWorker)return ocrWorker;
+  ocrStatus("กำลังโหลดตัวอ่านภาษาไทย (ครั้งแรกใช้เน็ตประมาณ 10 MB)...");
+  if(!window.Tesseract)await loadScript("https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js");
+  ocrWorker=await Tesseract.createWorker("tha+eng",1,{logger:m=>{if(m.status==="recognizing text")ocrStatus("กำลังอ่าน "+Math.round(m.progress*100)+"%")}});
+  return ocrWorker;
+}
+function prepImage(file){return new Promise((res,rej)=>{const img=new Image();const url=URL.createObjectURL(file);
+  img.onload=()=>{const m=1800,r=Math.min(1,m/Math.max(img.width,img.height));const c=document.createElement("canvas");
+    c.width=Math.round(img.width*r);c.height=Math.round(img.height*r);const g=c.getContext("2d");g.drawImage(img,0,0,c.width,c.height);
+    const d=g.getImageData(0,0,c.width,c.height),p=d.data;
+    for(let i=0;i<p.length;i+=4){let y=.299*p[i]+.587*p[i+1]+.114*p[i+2];y=Math.max(0,Math.min(255,(y-128)*1.5+128));p[i]=p[i+1]=p[i+2]=y}
+    g.putImageData(d,0,0);URL.revokeObjectURL(url);res(c)};
+  img.onerror=()=>rej(new Error("img"));img.src=url})}
+const THAI=/[฀-๿]/;
+function scoreLine(t){let s=0;if(/^(นาย|นาง|น\.ส|นางสาว|คุณ|ด\.ช|ด\.ญ|ร\.ต|พ\.ต|จ\.ส|ส\.ต|ผอ|ครู|อ\.)/.test(t))s+=5;
+  if(/(ม\.|หมู่|ต\.|อ\.|จ\.|ตำบล|อำเภอ|จังหวัด|บ้านเลขที่|\d{3,})/.test(t))s-=3;
+  const th=(t.match(/[฀-๿]/g)||[]).length;s+=Math.min(th,20)/5;if(/\s/.test(t))s+=1;return s}
+async function readEnvelope(file){
+  $("ocrLines").innerHTML="";
+  try{
+    const w=await getWorker();ocrStatus("กำลังอ่านหน้าซอง...");
+    const canvas=await prepImage(file);
+    const {data}=await w.recognize(canvas);
+    const lines=(data.text||"").split(/\n+/).map(t=>norm(t.replace(/[|_~`"'“”‘’\[\]{}<>]/g,""))).filter(t=>t.length>=2&&THAI.test(t));
+    if(!lines.length){ocrStatus("อ่านไม่ออก ลองถ่ายใกล้ขึ้นในที่สว่าง หรือพิมพ์ชื่อเอง");return}
+    const best=[...lines].sort((a,b)=>scoreLine(b)-scoreLine(a))[0];
+    $("eName").value=best;showMatches();
+    const rest=lines.filter(l=>l!==best);
+    if(rest.length&&!$("eNote").value)$("eNote").value=rest.find(l=>/(ม\.|หมู่|ต\.|อ\.|จ\.|บ้าน)/.test(l))||"";
+    const amt=(data.text.replace(/,/g,"").match(/(\d{2,6})\s*(บาท|฿|-)/)||[])[1];
+    if(amt&&!+$("eAmount").value)$("eAmount").value=amt;
+    ocrStatus("อ่านได้ตามนี้ ถ้าชื่อผิด แตะบรรทัดที่ถูกด้านล่าง หรือแก้ในช่องชื่อ");
+    $("ocrLines").innerHTML=lines.slice(0,8).map(l=>`<button type="button" data-line="${esc(l)}">${esc(l)}</button>`).join("");
+  }catch(e){ocrStatus("อ่านรูปไม่สำเร็จ ต้องต่อเน็ตครั้งแรกเพื่อโหลดตัวอ่าน หรือพิมพ์ชื่อเองได้เลย")}
+}
+$("ocrLines").onclick=e=>{const b=e.target.closest("[data-line]");if(b){$("eName").value=b.dataset.line;showMatches()}};
+$("fEnv").onchange=e=>{const f=e.target.files[0];e.target.value="";if(f)readEnvelope(f)};
+
+/* ---------- banknote scanner (colour of Thai notes, runs in the phone) ---------- */
+// Series 17 notes: 20 green, 50 blue, 100 red, 500 purple, 1000 grey-brown.
+function classifyNote(ctx,w,h){
+  const x0=Math.floor(w*.1),x1=Math.floor(w*.9),y0=Math.floor(h*.18),y1=Math.floor(h*.82);
+  const p=ctx.getImageData(x0,y0,x1-x0,y1-y0).data;
+  const bins=new Array(36).fill(0);let sat=0,n=0,warmLow=0;
+  for(let i=0;i<p.length;i+=16){
+    const r=p[i]/255,g=p[i+1]/255,b=p[i+2]/255,mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn;n++;
+    if(mx<.15)continue;const s=mx?d/mx:0;
+    let hh=0;if(d){if(mx===r)hh=((g-b)/d)%6;else if(mx===g)hh=(b-r)/d+2;else hh=(r-g)/d+4;hh*=60;if(hh<0)hh+=360}
+    if(s>.18&&mx<.97){bins[Math.floor(hh/10)%36]+=s;sat++}
+    else if(s>.06&&s<=.18&&hh>15&&hh<55)warmLow++;
+  }
+  if(sat<n*.08){return warmLow>n*.15?{d:1000,c:"ไม่ค่อยแน่ใจ"}:null}
+  let best=0;for(let i=1;i<36;i++)if(bins[i]>bins[best])best=i;
+  const hue=best*10+5,share=bins[best]/bins.reduce((a,b)=>a+b,0);
+  let d=null;
+  if(hue<15||hue>=335)d=100;
+  else if(hue<55)d=1000;
+  else if(hue<170)d=20;
+  else if(hue<250)d=50;
+  else if(hue<335)d=500;
+  return d?{d,c:share>.25?"":"ไม่ค่อยแน่ใจ"}:null;
+}
+let camStream=null,camTimer=null;
+function stopCam(){if(camTimer)clearInterval(camTimer);camTimer=null;if(camStream)camStream.getTracks().forEach(t=>t.stop());camStream=null}
+async function openCashScanner(){
+  const s=openSheet(`<h2>สแกนธนบัตร</h2>
+    <p class="hint">วางธนบัตรทีละใบบนกระดาษขาว ให้เต็มกรอบ ในที่สว่าง แล้วกด "นับใบนี้" ถ้าโปรแกรมทายผิด แตะชนิดที่ถูกแทนได้</p>
+    <div class="cam"><video id="camV" playsinline muted autoplay></video><div class="frame"></div><div class="det" id="camDet">กำลังเปิดกล้อง...</div></div>
+    <button class="btn primary block" id="camAdd">นับใบนี้</button>
+    <div class="row" id="camPick">${DENOMS.map(d=>`<button class="chip d${d} grow" data-pick="${d}" style="padding:10px">${d}</button>`).join("")}</div>
+    <div class="denoms" id="camCounts"></div>
+    <div class="row"><button class="btn grow" id="camUndo">ยกเลิกใบล่าสุด</button><button class="btn primary grow" id="camDone">เสร็จ</button></div>`,stopCam);
+  const v=s.querySelector("#camV"),det=s.querySelector("#camDet");
+  const cv=document.createElement("canvas"),ctx=cv.getContext("2d",{willReadFrequently:true});
+  let current=null;const hist=[];
+  const showCounts=()=>{s.querySelector("#camCounts").innerHTML=DENOMS.map(d=>`<div class="denom"><span class="chip d${d}">${d}</span><span class="num">${envCounts[d]} ใบ</span></div>`).join("")};
+  const add=d=>{envCounts[d]++;hist.push(d);renderEnvDenoms();recalc();showCounts();toast("+ "+d+" บาท  รวม "+baht($("eAmount").value));if(navigator.vibrate)navigator.vibrate(40)};
+  showCounts();
+  try{
+    camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1280}},audio:false});
+    v.srcObject=camStream;await v.play();
+    camTimer=setInterval(()=>{if(!v.videoWidth)return;cv.width=320;cv.height=Math.round(320*v.videoHeight/v.videoWidth);
+      ctx.drawImage(v,0,0,cv.width,cv.height);current=classifyNote(ctx,cv.width,cv.height);
+      det.textContent=current?("ดูเหมือน "+current.d+" บาท "+current.c):"ยังไม่เห็นธนบัตร";
+      det.style.background=current?getComputedStyle(document.querySelector(".d"+current.d)).backgroundColor:"rgba(0,0,0,.55)"},400);
+  }catch(e){det.textContent="เปิดกล้องไม่ได้ แตะชนิดธนบัตรด้านล่างเพื่อนับแทน";s.querySelector("#camAdd").hidden=true}
+  s.querySelector("#camAdd").onclick=()=>{if(current)add(current.d);else toast("ยังไม่เห็นธนบัตร เลื่อนให้อยู่ในกรอบ")};
+  s.querySelector("#camPick").onclick=e=>{const b=e.target.closest("[data-pick]");if(b)add(+b.dataset.pick)};
+  s.querySelector("#camUndo").onclick=()=>{const d=hist.pop();if(d){envCounts[d]=Math.max(0,envCounts[d]-1);renderEnvDenoms();recalc();showCounts()}};
+  s.querySelector("#camDone").onclick=closeSheet;
+}
+$("btnCash").onclick=openCashScanner;
+
+/* ---------- derived data ---------- */
+const all=()=>Object.entries(items).map(([id,v])=>Object.assign({id},v));
+const inEv=x=>x.eventId===settings.current;
+const evName=id=>(settings.events.find(e=>e.id===id)||{}).name||"ไม่ระบุงาน";
+
+/* ---------- render ---------- */
+function render(){
+  if(!settings.events.some(e=>e.id===settings.current))settings.current=settings.events[0]?.id;
+  $("evSel").innerHTML=settings.events.map(e=>`<option value="${esc(e.id)}"${e.id===settings.current?" selected":""}>${esc(e.name)}</option>`).join("");
+  renderHome();renderEnvList();renderPeople();renderTx();renderSettings();renderCatSelect();
+}
+function renderHome(){
+  const xs=all().filter(inEv);
+  const dons=xs.filter(x=>x.kind==="don");
+  const don=dons.reduce((s,x)=>s+(+x.amount||0),0);
+  const tin=xs.filter(x=>x.kind==="tx"&&x.type==="in").reduce((s,x)=>s+(+x.amount||0),0);
+  const outs=xs.filter(x=>x.kind==="tx"&&x.type==="out");
+  const tout=outs.reduce((s,x)=>s+(+x.amount||0),0);
+  $("hEvName").textContent="ยอดคงเหลือ · "+evName(settings.current);
+  $("hBalance").textContent=baht(don+tin-tout);
+  $("hSub").textContent=`รับรวม ${baht(don+tin)} · จ่าย ${baht(tout)}`;
+  $("sDon").textContent=baht(don);$("sDonN").textContent=dons.length+" ซอง";
+  $("sIn").textContent=baht(tin);$("sOut").textContent=baht(tout);
+  $("sPeople").textContent=new Set(dons.map(x=>key(x.name))).size;
+  const tot={};DENOMS.forEach(d=>tot[d]=0);let coins=0;
+  dons.forEach(x=>{if(x.notes)DENOMS.forEach(d=>tot[d]+=+x.notes[d]||0);coins+=+x.coins||0});
+  $("hDenoms").innerHTML=DENOMS.map(d=>`<div class="denom"><span class="chip d${d}">${d}</span><span class="num">${tot[d]} ใบ</span><span class="num hint">${baht(tot[d]*d)}</span></div>`).join("")+
+    `<div class="denom"><span class="chip" style="background:var(--muted)">เหรียญ</span><span class="num hint">${baht(coins)}</span></div>`;
+  const byCat={};outs.forEach(x=>byCat[x.cat]=(byCat[x.cat]||0)+(+x.amount||0));
+  const cats=Object.entries(byCat).sort((a,b)=>b[1]-a[1]);const mx=cats[0]?.[1]||1;
+  $("hBars").innerHTML=cats.length?cats.map(([c,v])=>`<div class="bar"><span>${esc(c)}</span><span class="num">${baht(v)}</span><i><em style="width:${(v/mx*100).toFixed(1)}%"></em></i></div>`).join(""):
+    `<div class="empty">ยังไม่มีรายจ่าย บันทึกได้ที่แท็บ รับ/จ่าย</div>`;
+}
+function renderEnvDenoms(){
+  $("eDenoms").innerHTML=DENOMS.map(d=>`<div class="denom"><span class="chip d${d}">${d}</span><span class="ctl"><button data-dn="${d}" data-dd="-1" aria-label="ลด ${d}">−</button><span class="num">${envCounts[d]}</span><button data-dn="${d}" data-dd="1" aria-label="เพิ่ม ${d}">+</button></span></div>`).join("");
+}
+function recalc(){const s=DENOMS.reduce((a,d)=>a+d*envCounts[d],0)+(+$("eCoins").value||0);$("eAmount").value=s||""}
+$("eDenoms").onclick=e=>{const b=e.target.closest("[data-dn]");if(!b)return;const d=+b.dataset.dn;envCounts[d]=Math.max(0,envCounts[d]+(+b.dataset.dd));renderEnvDenoms();recalc()};
+$("eCoins").oninput=recalc;
+function personSummary(name){
+  const k=key(name);const xs=all().filter(x=>x.kind==="don"&&key(x.name)===k);
+  return {n:xs.length,total:xs.reduce((s,x)=>s+(+x.amount||0),0)};
+}
+function showMatches(){
+  const v=norm($("eName").value);const box=$("eMatches");
+  if(v.length<2){box.innerHTML="";return}
+  const seen=new Map();all().filter(x=>x.kind==="don"&&key(x.name).includes(key(v))&&x.id!==editingId).forEach(x=>{const k=key(x.name);if(!seen.has(k))seen.set(k,x.name)});
+  box.innerHTML=[...seen.values()].slice(0,3).map(n=>{const p=personSummary(n);return `<div class="match"><b>${esc(n)}</b> เคยช่วย ${p.n} ครั้ง รวม ${baht(p.total)}</div>`}).join("");
+}
+$("eName").oninput=showMatches;
+function envRow(x,no){return `<button class="env" data-edit="${esc(x.id)}"><span class="no num">#${no}</span><span class="who"><b>${esc(x.name)}</b><small>${esc(x.note||"")}${x.note?" · ":""}${fmtDate(x.ts)}</small></span><span class="amt in num">${baht(x.amount)}</span></button>`}
+function renderEnvList(){
+  const dons=all().filter(x=>x.kind==="don"&&inEv(x)).sort((a,b)=>a.ts-b.ts);
+  $("envCount").textContent=dons.length+" ซอง · "+baht(dons.reduce((s,x)=>s+(+x.amount||0),0));
+  const rows=dons.map((x,i)=>[x,i+1]).reverse().slice(0,30);
+  $("envList").innerHTML=rows.length?rows.map(([x,n])=>envRow(x,n)).join(""):`<div class="empty">ยังไม่มีซองในงานนี้<br>ถ่ายหน้าซองหรือพิมพ์ชื่อด้านบนแล้วกดบันทึก</div>`;
+}
+function resetEnvForm(){editingId=null;$("envTitle").textContent="รับซองใหม่";$("eSave").textContent="บันทึกซอง";
+  ["eName","eNote","eCoins","eAmount"].forEach(i=>$(i).value="");DENOMS.forEach(d=>envCounts[d]=0);renderEnvDenoms();$("eMatches").innerHTML="";$("ocrLines").innerHTML="";ocrStatus("")}
+$("eClear").onclick=resetEnvForm;
+$("eSave").onclick=()=>{
+  const name=norm($("eName").value);const amount=+$("eAmount").value||0;
+  if(!name){toast("ใส่ชื่อผู้ช่วยงานก่อน");$("eName").focus();return}
+  if(amount<=0){toast("ใส่ยอดเงินหรือนับธนบัตรก่อน");return}
+  const prev=editingId?items[editingId]:null;
+  const v={kind:"don",name,note:norm($("eNote").value),amount,notes:Object.assign({},envCounts),coins:+$("eCoins").value||0,
+    eventId:prev?.eventId||settings.current,ts:prev?.ts||Date.now()};
+  const id=editingId||"d_"+uid();resetEnvForm();putItem(id,v);toast("บันทึกซองของ "+name+" "+baht(amount));
+};
+
+/* people */
+function renderPeople(){
+  const q=key($("qName").value);
+  const groups=new Map();
+  all().forEach(x=>{
+    if(scope==="ev"&&!inEv(x))return;
+    if(x.kind==="don"){const k=key(x.name);const g=groups.get(k)||{name:x.name,got:0,n:0,ret:0};g.got+=+x.amount||0;g.n++;groups.set(k,g)}
+  });
+  all().forEach(x=>{if(x.kind==="tx"&&x.cat===RETURN_CAT&&x.person){const g=groups.get(key(x.person));if(g)g.ret+=+x.amount||0}});
+  const arr=[...groups.values()].filter(g=>!q||key(g.name).includes(q)).sort((a,b)=>a.name.localeCompare(b.name,"th"));
+  $("peopleList").innerHTML=arr.length?arr.slice(0,300).map(g=>`<button class="env" data-person="${esc(g.name)}"><span class="who"><b>${esc(g.name)}</b><small>ช่วยมา ${g.n} ครั้ง${g.ret?` · เราช่วยคืนแล้ว ${baht(g.ret)}`:""}</small></span><span class="amt in num">${baht(g.got)}</span></button>`).join(""):
+    `<div class="empty">${q?"ไม่พบชื่อนี้":"ยังไม่มีรายชื่อผู้ช่วยงาน"}</div>`;
+}
+$("qName").oninput=renderPeople;
+document.querySelectorAll("[data-scope]").forEach(b=>b.onclick=()=>{scope=b.dataset.scope;document.querySelectorAll("[data-scope]").forEach(x=>x.setAttribute("aria-pressed",x===b));renderPeople()});
+
+/* transactions */
+function renderCatSelect(){
+  const cats=txType==="out"?settings.catsOut:settings.catsIn;const cur=$("tCat").value;
+  $("tCat").innerHTML=cats.map(c=>`<option${c===cur?" selected":""}>${esc(c)}</option>`).join("");
+  $("tPersonWrap").hidden=!(txType==="out"&&$("tCat").value===RETURN_CAT);
+  const f=$("tFilter").value;
+  $("tFilter").innerHTML=`<option value="">ทุกหมวด</option>`+[...new Set([...settings.catsOut,...settings.catsIn])].map(c=>`<option${c===f?" selected":""}>${esc(c)}</option>`).join("");
+}
+$("tCat").onchange=()=>{$("tPersonWrap").hidden=!(txType==="out"&&$("tCat").value===RETURN_CAT)};
+document.querySelectorAll("[data-tt]").forEach(b=>b.onclick=()=>{txType=b.dataset.tt;document.querySelectorAll("[data-tt]").forEach(x=>x.setAttribute("aria-pressed",x===b));renderCatSelect()});
+$("tFilter").onchange=renderTx;
+function renderTx(){
+  const f=$("tFilter").value;
+  const xs=all().filter(x=>x.kind==="tx"&&inEv(x)&&(!f||x.cat===f)).sort((a,b)=>b.ts-a.ts);
+  $("txList").innerHTML=xs.length?xs.map(x=>`<button class="env" data-edit="${esc(x.id)}"><span class="who"><b>${esc(x.cat)}${x.person?" · "+esc(x.person):""}</b><small><span class="pill ${x.type}">${x.type==="in"?"รับ":"จ่าย"}</span> ${esc(x.note||"")} · ${fmtDate(x.ts)}</small></span><span class="amt ${x.type} num">${x.type==="in"?"+":"−"}${baht(x.amount)}</span></button>`).join(""):
+    `<div class="empty">ยังไม่มีรายการ${f?"ในหมวดนี้":""}</div>`;
+}
+$("tSave").onclick=()=>{
+  const amount=+$("tAmount").value||0;if(amount<=0){toast("ใส่จำนวนเงินก่อน");return}
+  const cat=$("tCat").value;const person=cat===RETURN_CAT?norm($("tPerson").value):"";
+  const v={kind:"tx",type:txType,cat,amount,note:norm($("tNote").value),person,eventId:settings.current,ts:Date.now()};
+  $("tAmount").value="";$("tNote").value="";$("tPerson").value="";
+  putItem("t_"+uid(),v);toast((txType==="in"?"บันทึกรายรับ ":"บันทึกรายจ่าย ")+baht(amount));
+};
+
+/* settings */
+function renderSettings(){
+  $("evTags").innerHTML=settings.events.map(e=>`<span class="tag">${esc(e.name)}${settings.events.length>1?`<button data-delev="${esc(e.id)}" aria-label="ลบงาน ${esc(e.name)}">✕</button>`:""}</span>`).join("");
+  $("catOut").innerHTML=settings.catsOut.map(c=>`<span class="tag">${esc(c)}${c===RETURN_CAT?"":`<button data-delcat="out" data-c="${esc(c)}" aria-label="ลบ ${esc(c)}">✕</button>`}</span>`).join("");
+  $("catIn").innerHTML=settings.catsIn.map(c=>`<span class="tag">${esc(c)}<button data-delcat="in" data-c="${esc(c)}" aria-label="ลบ ${esc(c)}">✕</button></span>`).join("");
+}
+function addEvent(n){n=norm(n);if(!n)return;const id="ev_"+uid();settings.events.push({id,name:n});settings.current=id;saveSettings();toast("เพิ่ม "+n+" และสลับไปงานนี้แล้ว")}
+$("evSel").onchange=e=>{settings.current=e.target.value;saveSettings()};
+$("addEv").onclick=()=>{addEvent($("newEv").value);$("newEv").value=""};
+document.querySelectorAll("[data-addcat]").forEach(b=>b.onclick=()=>{const t=b.dataset.addcat;const inp=$(t==="out"?"newOut":"newIn");const n=norm(inp.value);if(!n)return;
+  const arr=t==="out"?settings.catsOut:settings.catsIn;if(!arr.includes(n))arr.push(n);inp.value="";saveSettings()});
+$("v-settings").addEventListener("click",e=>{
+  const pr=e.target.closest("[data-preset]");if(pr){$("newEv").value=pr.dataset.preset+" ";$("newEv").focus();return}
+  const de=e.target.closest("[data-delev]");
+  if(de){const id=de.dataset.delev;const n=all().filter(x=>x.eventId===id).length;
+    confirmSheet(`ลบงาน "${evName(id)}"?`,n?`งานนี้มี ${n} รายการ จะถูกลบทั้งหมด`:"งานนี้ยังไม่มีรายการ",()=>{
+      all().filter(x=>x.eventId===id).forEach(x=>delete items[x.id]);settings.events=settings.events.filter(x=>x.id!==id);saveSettings()});return}
+  const dc=e.target.closest("[data-delcat]");
+  if(dc){const t=dc.dataset.delcat,c=dc.dataset.c;if(t==="out")settings.catsOut=settings.catsOut.filter(x=>x!==c);else settings.catsIn=settings.catsIn.filter(x=>x!==c);saveSettings()}
+});
+$("btnBackup").onclick=()=>{const d=new Date();downloadFile(`สำรองสมุดซอง-${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}.json`,JSON.stringify({app:"sompoi",v:1,items,settings}),"application/json");toast("บันทึกไฟล์สำรองแล้ว")};
+$("fRestore").onchange=e=>{const f=e.target.files[0];e.target.value="";if(!f)return;const r=new FileReader();
+  r.onload=()=>{try{const d=JSON.parse(r.result);if(d.app!=="sompoi")throw 0;
+    const n=Object.keys(d.items||{}).length;
+    confirmSheet("กู้คืนข้อมูลจากไฟล์?",`ไฟล์มี ${n} รายการ ข้อมูลในเครื่องตอนนี้จะถูกแทนที่`,()=>{items=d.items||{};settings=Object.assign({},DEFAULT_SETTINGS,d.settings||{});saveSettings()},"กู้คืน")}
+    catch(x){toast("ไฟล์นี้ไม่ใช่ไฟล์สำรองของสมุดซอง")}};r.readAsText(f)};
+
+/* sheets */
+let sheetOnClose=null;
+function openSheet(html,onClose){closeSheet();sheetOnClose=onClose||null;const h=$("sheetHost");h.innerHTML=`<div class="sheet-bg"><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`;
+  h.firstChild.onclick=e=>{if(e.target===h.firstChild)closeSheet()};return h.querySelector(".sheet")}
+function closeSheet(){if(sheetOnClose){const f=sheetOnClose;sheetOnClose=null;f()}$("sheetHost").innerHTML=""}
+function confirmSheet(title,body,onYes,yes){const s=openSheet(`<h2>${esc(title)}</h2><p>${esc(body)}</p><div class="row"><button class="btn danger grow" id="cYes">${esc(yes||"ลบ")}</button><button class="btn grow" id="cNo">ยกเลิก</button></div>`);
+  s.querySelector("#cNo").onclick=closeSheet;s.querySelector("#cYes").onclick=()=>{closeSheet();onYes();toast(yes?"เรียบร้อย":"ลบแล้ว")}}
+document.addEventListener("click",e=>{
+  const ed=e.target.closest("[data-edit]");
+  if(ed){const id=ed.dataset.edit;const x=items[id];if(!x)return;
+    if(x.kind==="don"){
+      const s=openSheet(`<h2>${esc(x.name)}</h2><p class="hint">${esc(evName(x.eventId))} · ${fmtDate(x.ts)}</p><div class="amount-big num">${baht(x.amount)}</div>
+        <p>${DENOMS.filter(d=>x.notes&&x.notes[d]).map(d=>`${d}×${x.notes[d]}`).join(" , ")||"ไม่ได้บันทึกชนิดธนบัตร"}${x.coins?` , เหรียญ ${baht(x.coins)}`:""}</p>
+        ${x.note?`<p>${esc(x.note)}</p>`:""}
+        <div class="row"><button class="btn grow" id="sEdit">แก้ไข</button><button class="btn danger grow" id="sDel">ลบซองนี้</button></div><button class="btn ghost" id="sClose">ปิด</button>`);
+      s.querySelector("#sClose").onclick=closeSheet;
+      s.querySelector("#sDel").onclick=()=>confirmSheet("ลบซองของ "+x.name+"?",baht(x.amount),()=>delItem(id));
+      s.querySelector("#sEdit").onclick=()=>{closeSheet();go("envelope");editingId=id;$("envTitle").textContent="แก้ไขซอง";$("eSave").textContent="บันทึกการแก้ไข";
+        $("eName").value=x.name;$("eNote").value=x.note||"";$("eCoins").value=x.coins||"";DENOMS.forEach(d=>envCounts[d]=+(x.notes?.[d])||0);renderEnvDenoms();$("eAmount").value=x.amount;window.scrollTo(0,0)};
+    }else{
+      const s=openSheet(`<h2>${esc(x.cat)}</h2><p class="hint">${x.type==="in"?"รายรับ":"รายจ่าย"} · ${fmtDate(x.ts)}${x.person?" · "+esc(x.person):""}</p>
+        <div class="field"><label class="label" for="xAmt">จำนวนเงิน</label><input id="xAmt" type="number" inputmode="decimal" value="${+x.amount}"></div>
+        <div class="field"><label class="label" for="xNote">รายละเอียด</label><input id="xNote" value="${esc(x.note||"")}"></div>
+        <div class="row"><button class="btn primary grow" id="xSave">บันทึก</button><button class="btn danger grow" id="xDel">ลบ</button></div><button class="btn ghost" id="sClose">ปิด</button>`);
+      s.querySelector("#sClose").onclick=closeSheet;
+      s.querySelector("#xSave").onclick=()=>{const a=+s.querySelector("#xAmt").value||0;if(a<=0)return;const nt=norm(s.querySelector("#xNote").value);closeSheet();putItem(id,Object.assign({},x,{amount:a,note:nt}));toast("บันทึกแล้ว")};
+      s.querySelector("#xDel").onclick=()=>confirmSheet("ลบรายการนี้?",x.cat+" "+baht(x.amount),()=>delItem(id));
+    }return}
+  const pp=e.target.closest("[data-person]");
+  if(pp){const name=pp.dataset.person;const k=key(name);
+    const dons=all().filter(x=>x.kind==="don"&&key(x.name)===k).sort((a,b)=>b.ts-a.ts);
+    const rets=all().filter(x=>x.kind==="tx"&&x.cat===RETURN_CAT&&key(x.person)===k).sort((a,b)=>b.ts-a.ts);
+    const got=dons.reduce((s,x)=>s+(+x.amount||0),0),ret=rets.reduce((s,x)=>s+(+x.amount||0),0);
+    const s=openSheet(`<h2>${esc(name)}</h2>
+      <div class="grid2"><div class="stat in"><span class="label">เขาช่วยเรา</span><b class="num">${baht(got)}</b></div><div class="stat out"><span class="label">เราช่วยคืนแล้ว</span><b class="num">${baht(ret)}</b></div></div>
+      <span class="label">ประวัติ</span>
+      <div class="list">${dons.map(x=>`<div class="env"><span class="who"><b>${esc(evName(x.eventId))}</b><small>${fmtDate(x.ts)}${x.note?" · "+esc(x.note):""}</small></span><span class="amt in num">${baht(x.amount)}</span></div>`).join("")}
+      ${rets.map(x=>`<div class="env"><span class="who"><b>เราไปช่วยคืน</b><small>${fmtDate(x.ts)}${x.note?" · "+esc(x.note):""}</small></span><span class="amt out num">−${baht(x.amount)}</span></div>`).join("")}</div>
+      <span class="label">บันทึกว่าเราไปช่วยงานเขาคืน</span>
+      <div class="row"><input id="rAmt" class="grow" type="number" inputmode="numeric" placeholder="จำนวนเงิน"><input id="rNote" class="grow" placeholder="งานอะไร เช่น งานบวชลูกชาย"></div>
+      <div class="row"><button class="btn primary grow" id="rSave">บันทึกการช่วยคืน</button><button class="btn ghost" id="sClose">ปิด</button></div>`);
+    s.querySelector("#sClose").onclick=closeSheet;
+    s.querySelector("#rSave").onclick=()=>{const a=+s.querySelector("#rAmt").value||0;if(a<=0){toast("ใส่จำนวนเงินก่อน");return}
+      if(!settings.catsOut.includes(RETURN_CAT))settings.catsOut.push(RETURN_CAT);
+      const nt=norm(s.querySelector("#rNote").value);closeSheet();
+      putItem("t_"+uid(),{kind:"tx",type:"out",cat:RETURN_CAT,amount:a,note:nt,person:name,eventId:settings.current,ts:Date.now()});toast("บันทึกการช่วยคืน "+baht(a))};
+    return}
+  const g=e.target.closest("[data-go]");if(g)go(g.dataset.go);
+});
+
+/* tabs */
+function go(v){document.querySelectorAll("section.view").forEach(s=>s.hidden=s.id!=="v-"+v);
+  document.querySelectorAll("nav.tabs [data-go]").forEach(b=>b.setAttribute("aria-current",b.dataset.go===v));window.scrollTo(0,0);
+  try{sessionStorage.setItem("sompoi-tab",v)}catch(e){}}
+
+/* export CSV */
+$("btnExport").onclick=()=>{
+  const q=v=>'"'+String(v??"").replace(/"/g,'""')+'"';
+  const lines=[["ประเภท","งาน","วันที่","ชื่อ/หมวด","รายละเอียด","รับ","จ่าย","1000","500","100","50","20","เหรียญ"].map(q).join(",")];
+  all().sort((a,b)=>a.ts-b.ts).forEach(x=>{
+    if(x.kind==="don")lines.push(["ซองช่วยงาน",evName(x.eventId),new Date(x.ts).toLocaleString("th-TH"),x.name,x.note,x.amount,"",...DENOMS.map(d=>x.notes?.[d]||""),x.coins||""].map(q).join(","));
+    else lines.push([x.type==="in"?"รายรับ":"รายจ่าย",evName(x.eventId),new Date(x.ts).toLocaleString("th-TH"),x.cat+(x.person?" - "+x.person:""),x.note,x.type==="in"?x.amount:"",x.type==="out"?x.amount:"","","","","","",""].map(q).join(","));
+  });
+  downloadFile("สมุดซองช่วยงาน.csv","﻿"+lines.join("\n"),"text/csv");
+};
+
+load();renderEnvDenoms();render();
+try{const t=sessionStorage.getItem("sompoi-tab");if(t)go(t)}catch(e){}
+})();
+</script>
+</body>
+</html>

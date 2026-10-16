@@ -146,6 +146,10 @@ nav.tabs button[aria-current="true"]{color:var(--accent);font-weight:600}
       <div class="denoms" id="hDenoms"></div>
     </div>
     <div class="panel">
+      <h2>ยอดซองตามความเกี่ยวข้อง</h2>
+      <div class="bars" id="hRel"></div>
+    </div>
+    <div class="panel">
       <h2>รายจ่ายตามหมวด</h2>
       <div class="bars" id="hBars"></div>
     </div>
@@ -169,6 +173,10 @@ nav.tabs button[aria-current="true"]{color:var(--accent);font-weight:600}
       <div class="field"><label class="label" for="eName">ชื่อผู้ช่วยงาน (ตามหน้าซอง)</label>
         <input id="eName" autocomplete="off" placeholder="เช่น นายสมชาย ใจดี"></div>
       <div class="matches" id="eMatches"></div>
+      <div class="field"><label class="label" for="eRel">เป็นญาติ / รู้จักทางไหน</label>
+        <input id="eRel" list="relList" autocomplete="off" placeholder="เช่น ญาติฝ่ายแม่, เพื่อนที่ทำงาน"></div>
+      <div class="tags" id="relQuick"></div>
+      <datalist id="relList"></datalist>
       <div class="field"><label class="label" for="eNote">ที่อยู่ / หมายเหตุ</label>
         <input id="eNote" placeholder="เช่น บ้านนาแก ม.3 / ฝากมากับ..."></div>
       <span class="label">นับธนบัตร</span>
@@ -188,7 +196,8 @@ nav.tabs button[aria-current="true"]{color:var(--accent);font-weight:600}
 
   <!-- ค้นชื่อ -->
   <section class="view" id="v-people" hidden>
-    <input id="qName" type="search" placeholder="พิมพ์ชื่อเพื่อค้นหา" autocomplete="off">
+    <input id="qName" type="search" placeholder="พิมพ์ชื่อหรือความเกี่ยวข้องเพื่อค้นหา" autocomplete="off">
+    <select id="qRel" aria-label="กรองตามความเกี่ยวข้อง"><option value="">ทุกความเกี่ยวข้อง</option></select>
     <div class="seg" role="group" aria-label="ขอบเขต">
       <button class="neu" data-scope="all" aria-pressed="true">ทุกงาน</button>
       <button class="neu" data-scope="ev" aria-pressed="false">เฉพาะงานนี้</button>
@@ -243,6 +252,11 @@ nav.tabs button[aria-current="true"]{color:var(--accent);font-weight:600}
       <div class="row"><input id="newIn" class="grow" placeholder="หมวดใหม่"><button class="btn" data-addcat="in">เพิ่ม</button></div>
     </div>
     <div class="panel">
+      <h2>นำเข้าจาก Excel</h2>
+      <p class="hint">ดึงรายชื่อซองจากไฟล์ .xlsx หรือ .csv ที่เคยจดไว้ เข้ามาเป็นงานหนึ่งในสมุด</p>
+      <label class="btn block" style="text-align:center">เลือกไฟล์ Excel<input type="file" accept=".xlsx,.xls,.csv" id="fImport" hidden></label>
+    </div>
+    <div class="panel">
       <h2>สำรองข้อมูล</h2>
       <p class="hint">ข้อมูลทั้งหมดเก็บในมือถือเครื่องนี้เท่านั้น ไม่ส่งขึ้นเซิร์ฟเวอร์ ควรสำรองไว้หลังจบงาน และใช้ไฟล์นี้ย้ายไปเครื่องใหม่ได้</p>
       <div class="row">
@@ -267,6 +281,7 @@ nav.tabs button[aria-current="true"]{color:var(--accent);font-weight:600}
 (function(){
 const DENOMS=[1000,500,100,50,20];
 const RETURN_CAT="ช่วยงานคืน";
+const REL_PRESETS=["ญาติฝ่ายพ่อ","ญาติฝ่ายแม่","ญาติฝ่ายเจ้าบ่าว","ญาติฝ่ายเจ้าสาว","เพื่อน","เพื่อนบ้าน","ที่ทำงาน","คนในหมู่บ้าน"];
 const DEFAULT_SETTINGS={events:[{id:"ev1",name:"งานของเรา"}],current:"ev1",
   catsOut:["อาหาร","เครื่องดื่ม/น้ำแข็ง","เต็นท์/เก้าอี้/เครื่องเสียง","ปัจจัยถวายพระ","ดอกไม้/พวงหรีด",RETURN_CAT,"อื่นๆ"],
   catsIn:["เงินบริจาคทั่วไป","ขายของ","อื่นๆ"]};
@@ -404,7 +419,7 @@ const evName=id=>(settings.events.find(e=>e.id===id)||{}).name||"ไม่ระ
 function render(){
   if(!settings.events.some(e=>e.id===settings.current))settings.current=settings.events[0]?.id;
   $("evSel").innerHTML=settings.events.map(e=>`<option value="${esc(e.id)}"${e.id===settings.current?" selected":""}>${esc(e.name)}</option>`).join("");
-  renderHome();renderEnvList();renderPeople();renderTx();renderSettings();renderCatSelect();
+  renderRel();renderHome();renderEnvList();renderPeople();renderTx();renderSettings();renderCatSelect();
 }
 function renderHome(){
   const xs=all().filter(inEv);
@@ -428,6 +443,19 @@ function renderHome(){
   $("hBars").innerHTML=cats.length?cats.map(([c,v])=>`<div class="bar"><span>${esc(c)}</span><span class="num">${baht(v)}</span><i><em style="width:${(v/mx*100).toFixed(1)}%"></em></i></div>`).join(""):
     `<div class="empty">ยังไม่มีรายจ่าย บันทึกได้ที่แท็บ รับ/จ่าย</div>`;
 }
+function allRels(){const m=new Map();REL_PRESETS.forEach(r=>m.set(r,0));all().forEach(x=>{if(x.kind==="don"&&x.rel)m.set(x.rel,(m.get(x.rel)||0)+1)});return [...m.entries()].sort((a,b)=>b[1]-a[1]).map(e=>e[0])}
+function renderRel(){
+  const rels=allRels();
+  $("relList").innerHTML=rels.map(r=>`<option value="${esc(r)}">`).join("");
+  $("relQuick").innerHTML=rels.slice(0,8).map(r=>`<button type="button" class="tag preset" data-rel="${esc(r)}">${esc(r)}</button>`).join("");
+  const cur=$("qRel").value;
+  const used=[...new Set(all().filter(x=>x.kind==="don"&&x.rel).map(x=>x.rel))].sort((a,b)=>a.localeCompare(b,"th"));
+  $("qRel").innerHTML=`<option value="">ทุกความเกี่ยวข้อง</option>`+used.map(r=>`<option${r===cur?" selected":""}>${esc(r)}</option>`).join("")+`<option value="__none"${cur==="__none"?" selected":""}>ยังไม่ระบุ</option>`;
+  const by={};all().filter(x=>x.kind==="don"&&inEv(x)).forEach(x=>{const k=x.rel||"ยังไม่ระบุ";by[k]=by[k]||{v:0,n:0};by[k].v+=+x.amount||0;by[k].n++});
+  const arr=Object.entries(by).sort((a,b)=>b[1].v-a[1].v);const mx=arr[0]?.[1].v||1;
+  $("hRel").innerHTML=arr.length?arr.map(([k,o])=>`<div class="bar"><span>${esc(k)} <span class="hint num">${o.n} ซอง</span></span><span class="num">${baht(o.v)}</span><i><em style="width:${(o.v/mx*100).toFixed(1)}%;background:var(--in)"></em></i></div>`).join(""):`<div class="empty">ยังไม่มีซองในงานนี้</div>`;
+}
+$("relQuick").onclick=e=>{const b=e.target.closest("[data-rel]");if(b)$("eRel").value=b.dataset.rel};
 function renderEnvDenoms(){
   $("eDenoms").innerHTML=DENOMS.map(d=>`<div class="denom"><span class="chip d${d}">${d}</span><span class="ctl"><button data-dn="${d}" data-dd="-1" aria-label="ลด ${d}">−</button><span class="num">${envCounts[d]}</span><button data-dn="${d}" data-dd="1" aria-label="เพิ่ม ${d}">+</button></span></div>`).join("");
 }
@@ -445,7 +473,8 @@ function showMatches(){
   box.innerHTML=[...seen.values()].slice(0,3).map(n=>{const p=personSummary(n);return `<div class="match"><b>${esc(n)}</b> เคยช่วย ${p.n} ครั้ง รวม ${baht(p.total)}</div>`}).join("");
 }
 $("eName").oninput=showMatches;
-function envRow(x,no){return `<button class="env" data-edit="${esc(x.id)}"><span class="no num">#${no}</span><span class="who"><b>${esc(x.name)}</b><small>${esc(x.note||"")}${x.note?" · ":""}${fmtDate(x.ts)}</small></span><span class="amt in num">${baht(x.amount)}</span></button>`}
+$("eName").onchange=()=>{if($("eRel").value)return;const k=key($("eName").value);const p=all().filter(x=>x.kind==="don"&&x.rel&&key(x.name)===k).sort((a,b)=>b.ts-a.ts)[0];if(p)$("eRel").value=p.rel};
+function envRow(x,no){return `<button class="env" data-edit="${esc(x.id)}"><span class="no num">#${no}</span><span class="who"><b>${esc(x.name)}</b><small>${x.rel?`<span class="pill">${esc(x.rel)}</span> `:""}${esc(x.note||"")}${x.note?" · ":""}${fmtDate(x.ts)}</small></span><span class="amt in num">${baht(x.amount)}</span></button>`}
 function renderEnvList(){
   const dons=all().filter(x=>x.kind==="don"&&inEv(x)).sort((a,b)=>a.ts-b.ts);
   $("envCount").textContent=dons.length+" ซอง · "+baht(dons.reduce((s,x)=>s+(+x.amount||0),0));
@@ -453,32 +482,32 @@ function renderEnvList(){
   $("envList").innerHTML=rows.length?rows.map(([x,n])=>envRow(x,n)).join(""):`<div class="empty">ยังไม่มีซองในงานนี้<br>ถ่ายหน้าซองหรือพิมพ์ชื่อด้านบนแล้วกดบันทึก</div>`;
 }
 function resetEnvForm(){editingId=null;$("envTitle").textContent="รับซองใหม่";$("eSave").textContent="บันทึกซอง";
-  ["eName","eNote","eCoins","eAmount"].forEach(i=>$(i).value="");DENOMS.forEach(d=>envCounts[d]=0);renderEnvDenoms();$("eMatches").innerHTML="";$("ocrLines").innerHTML="";ocrStatus("")}
+  ["eName","eRel","eNote","eCoins","eAmount"].forEach(i=>$(i).value="");DENOMS.forEach(d=>envCounts[d]=0);renderEnvDenoms();$("eMatches").innerHTML="";$("ocrLines").innerHTML="";ocrStatus("")}
 $("eClear").onclick=resetEnvForm;
 $("eSave").onclick=()=>{
   const name=norm($("eName").value);const amount=+$("eAmount").value||0;
   if(!name){toast("ใส่ชื่อผู้ช่วยงานก่อน");$("eName").focus();return}
   if(amount<=0){toast("ใส่ยอดเงินหรือนับธนบัตรก่อน");return}
   const prev=editingId?items[editingId]:null;
-  const v={kind:"don",name,note:norm($("eNote").value),amount,notes:Object.assign({},envCounts),coins:+$("eCoins").value||0,
+  const v={kind:"don",name,rel:norm($("eRel").value),note:norm($("eNote").value),amount,notes:Object.assign({},envCounts),coins:+$("eCoins").value||0,
     eventId:prev?.eventId||settings.current,ts:prev?.ts||Date.now()};
   const id=editingId||"d_"+uid();resetEnvForm();putItem(id,v);toast("บันทึกซองของ "+name+" "+baht(amount));
 };
 
 /* people */
 function renderPeople(){
-  const q=key($("qName").value);
+  const q=key($("qName").value);const qr=$("qRel").value;
   const groups=new Map();
   all().forEach(x=>{
     if(scope==="ev"&&!inEv(x))return;
-    if(x.kind==="don"){const k=key(x.name);const g=groups.get(k)||{name:x.name,got:0,n:0,ret:0};g.got+=+x.amount||0;g.n++;groups.set(k,g)}
+    if(x.kind==="don"){const k=key(x.name);const g=groups.get(k)||{name:x.name,got:0,n:0,ret:0,rel:"",rts:0};g.got+=+x.amount||0;g.n++;if(x.rel&&x.ts>=g.rts){g.rel=x.rel;g.rts=x.ts}groups.set(k,g)}
   });
   all().forEach(x=>{if(x.kind==="tx"&&x.cat===RETURN_CAT&&x.person){const g=groups.get(key(x.person));if(g)g.ret+=+x.amount||0}});
-  const arr=[...groups.values()].filter(g=>!q||key(g.name).includes(q)).sort((a,b)=>a.name.localeCompare(b.name,"th"));
-  $("peopleList").innerHTML=arr.length?arr.slice(0,300).map(g=>`<button class="env" data-person="${esc(g.name)}"><span class="who"><b>${esc(g.name)}</b><small>ช่วยมา ${g.n} ครั้ง${g.ret?` · เราช่วยคืนแล้ว ${baht(g.ret)}`:""}</small></span><span class="amt in num">${baht(g.got)}</span></button>`).join(""):
+  const arr=[...groups.values()].filter(g=>(!q||key(g.name).includes(q)||key(g.rel).includes(q))&&(!qr||(qr==="__none"?!g.rel:g.rel===qr))).sort((a,b)=>a.name.localeCompare(b.name,"th"));
+  $("peopleList").innerHTML=arr.length?arr.slice(0,300).map(g=>`<button class="env" data-person="${esc(g.name)}"><span class="who"><b>${esc(g.name)}</b><small>${g.rel?`<span class="pill">${esc(g.rel)}</span> `:""}ช่วยมา ${g.n} ครั้ง${g.ret?` · เราช่วยคืนแล้ว ${baht(g.ret)}`:""}</small></span><span class="amt in num">${baht(g.got)}</span></button>`).join(""):
     `<div class="empty">${q?"ไม่พบชื่อนี้":"ยังไม่มีรายชื่อผู้ช่วยงาน"}</div>`;
 }
-$("qName").oninput=renderPeople;
+$("qName").oninput=renderPeople;$("qRel").onchange=renderPeople;
 document.querySelectorAll("[data-scope]").forEach(b=>b.onclick=()=>{scope=b.dataset.scope;document.querySelectorAll("[data-scope]").forEach(x=>x.setAttribute("aria-pressed",x===b));renderPeople()});
 
 /* transactions */
@@ -533,6 +562,78 @@ $("fRestore").onchange=e=>{const f=e.target.files[0];e.target.value="";if(!f)ret
     confirmSheet("กู้คืนข้อมูลจากไฟล์?",`ไฟล์มี ${n} รายการ ข้อมูลในเครื่องตอนนี้จะถูกแทนที่`,()=>{items=d.items||{};settings=Object.assign({},DEFAULT_SETTINGS,d.settings||{});saveSettings()},"กู้คืน")}
     catch(x){toast("ไฟล์นี้ไม่ใช่ไฟล์สำรองของสมุดซอง")}};r.readAsText(f)};
 
+/* import from Excel */
+const colLetter=i=>{let s="";i++;while(i>0){const m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26)}return s};
+const toNum=v=>{if(typeof v==="number")return v;const n=parseFloat(String(v??"").replace(/[,฿\s]|บาท/g,""));return isNaN(n)?0:n};
+$("fImport").onchange=async e=>{
+  const f=e.target.files[0];e.target.value="";if(!f)return;
+  try{
+    if(!window.XLSX){toast("กำลังโหลดตัวอ่าน Excel...");await loadScript("https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js")}
+    const wb=XLSX.read(await f.arrayBuffer(),{type:"array"});
+    openImport(wb,f.name.replace(/\.[^.]+$/,""));
+  }catch(x){toast("เปิดไฟล์นี้ไม่ได้ ลองบันทึกเป็น .xlsx หรือ .csv ใหม่")}
+};
+function openImport(wb,fileName){
+  const names=wb.SheetNames;
+  const guessSheet=names.find(n=>/ซอง|รายชื่อ/.test(n))||names[0];
+  const s=openSheet(`<h2>นำเข้าจาก Excel</h2>
+    <div class="field"><label class="label" for="iSheet">ชีต</label><select id="iSheet">${names.map(n=>`<option${n===guessSheet?" selected":""}>${esc(n)}</option>`).join("")}</select></div>
+    <div class="row">
+      <div class="field grow"><label class="label" for="iName">คอลัมน์ชื่อ</label><select id="iName"></select></div>
+      <div class="field grow"><label class="label" for="iAmt">คอลัมน์ยอดเงิน</label><select id="iAmt"></select></div>
+      <div class="field grow"><label class="label" for="iNote">คอลัมน์หมายเหตุ</label><select id="iNote"></select></div>
+      <div class="field grow"><label class="label" for="iRel">คอลัมน์ความเกี่ยวข้อง</label><select id="iRel"></select></div>
+    </div>
+    <div class="field"><label class="label" for="iEv">นำเข้าเป็นงาน</label><select id="iEv"><option value="__new">+ สร้างงานใหม่</option>${settings.events.map(e=>`<option value="${esc(e.id)}">${esc(e.name)}</option>`).join("")}</select></div>
+    <div class="field" id="iNewWrap"><label class="label" for="iNewEv">ชื่องานใหม่</label><input id="iNewEv" value="${esc(fileName)}"></div>
+    <div class="status" id="iSum"></div>
+    <div class="list" id="iPrev"></div>
+    <div class="row"><button class="btn primary grow" id="iGo">นำเข้า</button><button class="btn grow" id="iCancel">ยกเลิก</button></div>`);
+  let rows=[],head=0;
+  const sel=id=>s.querySelector(id);
+  function loadSheet(){
+    rows=XLSX.utils.sheet_to_json(wb.Sheets[sel("#iSheet").value],{header:1,defval:"",raw:true});
+    head=Math.max(0,rows.slice(0,15).findIndex(r=>r.some(c=>/ชื่อ/.test(String(c)))));
+    const width=Math.max(0,...rows.slice(0,50).map(r=>r.length));
+    const label=i=>{const h=norm(rows[head]?.[i]);return colLetter(i)+(h?" · "+h:"")};
+    const opts=Array.from({length:width},(_,i)=>`<option value="${i}">${esc(label(i))}</option>`).join("");
+    const hdr=(rows[head]||[]).map(c=>String(c));
+    let ni=hdr.findIndex(h=>/ชื่อ/.test(h));if(ni<0)ni=1;
+    let ai=hdr.findIndex(h=>/ยอด|จำนวนเงิน|^เงิน|amount/i.test(h));
+    if(ai<0){ai=hdr.findIndex((h,i)=>i!==ni&&rows.slice(head+1,head+20).filter(r=>toNum(r[i])>=10).length>5&&!/ซอง|ลำดับ|ที่/.test(h))}
+    let oi=hdr.findIndex((h,i)=>i!==ni&&i!==ai&&rows.slice(head+1,head+20).some(r=>THAI.test(String(r[i]))));
+    sel("#iName").innerHTML=opts;sel("#iAmt").innerHTML=opts;sel("#iNote").innerHTML=`<option value="-1">ไม่ใช้</option>`+opts;
+    const ri=hdr.findIndex(h=>/ญาติ|เกี่ยวข้อง|ความสัมพันธ์|ฝ่าย/.test(h));
+    sel("#iRel").innerHTML=`<option value="-1">ไม่ใช้ (ใส่ทีหลัง)</option>`+opts;sel("#iRel").value=ri;
+    sel("#iName").value=ni;sel("#iAmt").value=Math.max(0,ai);sel("#iNote").value=oi;
+    preview();
+  }
+  function parsed(){
+    const ni=+sel("#iName").value,ai=+sel("#iAmt").value,oi=+sel("#iNote").value,ri=+sel("#iRel").value;
+    return rows.slice(head+1).map(r=>({name:norm(r[ni]),amount:toNum(r[ai]),note:oi>=0?norm(r[oi]):"",rel:ri>=0?norm(r[ri]):""}))
+      .filter(x=>x.name&&x.amount>0&&!/^(รวม|ยอดรวม|total)/i.test(x.name));
+  }
+  function preview(){
+    const xs=parsed();const tot=xs.reduce((a,x)=>a+x.amount,0);
+    sel("#iSum").textContent=xs.length?`พบ ${xs.length} ซอง รวม ${baht(tot)}`:"ไม่พบรายการ ลองเปลี่ยนชีตหรือคอลัมน์";
+    sel("#iPrev").innerHTML=xs.slice(0,5).map((x,i)=>`<div class="env"><span class="no num">#${i+1}</span><span class="who"><b>${esc(x.name)}</b><small>${esc(x.note)}</small></span><span class="amt in num">${baht(x.amount)}</span></div>`).join("")+(xs.length>5?`<p class="hint">และอีก ${xs.length-5} รายการ</p>`:"");
+  }
+  sel("#iSheet").onchange=loadSheet;
+  ["#iName","#iAmt","#iNote","#iRel"].forEach(id=>sel(id).onchange=preview);
+  sel("#iEv").onchange=()=>{sel("#iNewWrap").hidden=sel("#iEv").value!=="__new"};
+  sel("#iCancel").onclick=closeSheet;
+  sel("#iGo").onclick=()=>{
+    const xs=parsed();if(!xs.length){toast("ไม่มีรายการให้นำเข้า");return}
+    let evId=sel("#iEv").value;
+    if(evId==="__new"){const n=norm(sel("#iNewEv").value)||fileName;evId="ev_"+uid();settings.events.push({id:evId,name:n})}
+    const base=Date.now()-xs.length*1000;
+    xs.forEach((x,i)=>{items["d_"+uid()+i]={kind:"don",name:x.name,rel:x.rel,note:x.note,amount:x.amount,notes:{},coins:0,eventId:evId,ts:base+i*1000,imported:true}});
+    settings.current=evId;closeSheet();saveSettings();go("people");
+    toast(`นำเข้า ${xs.length} ซอง รวม ${baht(xs.reduce((a,x)=>a+x.amount,0))} แล้ว`);
+  };
+  loadSheet();
+}
+
 /* sheets */
 let sheetOnClose=null;
 function openSheet(html,onClose){closeSheet();sheetOnClose=onClose||null;const h=$("sheetHost");h.innerHTML=`<div class="sheet-bg"><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`;
@@ -544,14 +645,14 @@ document.addEventListener("click",e=>{
   const ed=e.target.closest("[data-edit]");
   if(ed){const id=ed.dataset.edit;const x=items[id];if(!x)return;
     if(x.kind==="don"){
-      const s=openSheet(`<h2>${esc(x.name)}</h2><p class="hint">${esc(evName(x.eventId))} · ${fmtDate(x.ts)}</p><div class="amount-big num">${baht(x.amount)}</div>
+      const s=openSheet(`<h2>${esc(x.name)}</h2><p class="hint">${x.rel?esc(x.rel)+" · ":""}${esc(evName(x.eventId))} · ${fmtDate(x.ts)}</p><div class="amount-big num">${baht(x.amount)}</div>
         <p>${DENOMS.filter(d=>x.notes&&x.notes[d]).map(d=>`${d}×${x.notes[d]}`).join(" , ")||"ไม่ได้บันทึกชนิดธนบัตร"}${x.coins?` , เหรียญ ${baht(x.coins)}`:""}</p>
         ${x.note?`<p>${esc(x.note)}</p>`:""}
         <div class="row"><button class="btn grow" id="sEdit">แก้ไข</button><button class="btn danger grow" id="sDel">ลบซองนี้</button></div><button class="btn ghost" id="sClose">ปิด</button>`);
       s.querySelector("#sClose").onclick=closeSheet;
       s.querySelector("#sDel").onclick=()=>confirmSheet("ลบซองของ "+x.name+"?",baht(x.amount),()=>delItem(id));
       s.querySelector("#sEdit").onclick=()=>{closeSheet();go("envelope");editingId=id;$("envTitle").textContent="แก้ไขซอง";$("eSave").textContent="บันทึกการแก้ไข";
-        $("eName").value=x.name;$("eNote").value=x.note||"";$("eCoins").value=x.coins||"";DENOMS.forEach(d=>envCounts[d]=+(x.notes?.[d])||0);renderEnvDenoms();$("eAmount").value=x.amount;window.scrollTo(0,0)};
+        $("eName").value=x.name;$("eRel").value=x.rel||"";$("eNote").value=x.note||"";$("eCoins").value=x.coins||"";DENOMS.forEach(d=>envCounts[d]=+(x.notes?.[d])||0);renderEnvDenoms();$("eAmount").value=x.amount;window.scrollTo(0,0)};
     }else{
       const s=openSheet(`<h2>${esc(x.cat)}</h2><p class="hint">${x.type==="in"?"รายรับ":"รายจ่าย"} · ${fmtDate(x.ts)}${x.person?" · "+esc(x.person):""}</p>
         <div class="field"><label class="label" for="xAmt">จำนวนเงิน</label><input id="xAmt" type="number" inputmode="decimal" value="${+x.amount}"></div>
@@ -566,7 +667,9 @@ document.addEventListener("click",e=>{
     const dons=all().filter(x=>x.kind==="don"&&key(x.name)===k).sort((a,b)=>b.ts-a.ts);
     const rets=all().filter(x=>x.kind==="tx"&&x.cat===RETURN_CAT&&key(x.person)===k).sort((a,b)=>b.ts-a.ts);
     const got=dons.reduce((s,x)=>s+(+x.amount||0),0),ret=rets.reduce((s,x)=>s+(+x.amount||0),0);
+    const rel=(dons.find(x=>x.rel)||{}).rel||"";
     const s=openSheet(`<h2>${esc(name)}</h2>
+      <div class="row"><input id="pRel" class="grow" list="relList" value="${esc(rel)}" placeholder="เป็นญาติ / รู้จักทางไหน"><button class="btn" id="pRelSave">บันทึก</button></div>
       <div class="grid2"><div class="stat in"><span class="label">เขาช่วยเรา</span><b class="num">${baht(got)}</b></div><div class="stat out"><span class="label">เราช่วยคืนแล้ว</span><b class="num">${baht(ret)}</b></div></div>
       <span class="label">ประวัติ</span>
       <div class="list">${dons.map(x=>`<div class="env"><span class="who"><b>${esc(evName(x.eventId))}</b><small>${fmtDate(x.ts)}${x.note?" · "+esc(x.note):""}</small></span><span class="amt in num">${baht(x.amount)}</span></div>`).join("")}
@@ -575,6 +678,7 @@ document.addEventListener("click",e=>{
       <div class="row"><input id="rAmt" class="grow" type="number" inputmode="numeric" placeholder="จำนวนเงิน"><input id="rNote" class="grow" placeholder="งานอะไร เช่น งานบวชลูกชาย"></div>
       <div class="row"><button class="btn primary grow" id="rSave">บันทึกการช่วยคืน</button><button class="btn ghost" id="sClose">ปิด</button></div>`);
     s.querySelector("#sClose").onclick=closeSheet;
+    s.querySelector("#pRelSave").onclick=()=>{const r=norm(s.querySelector("#pRel").value);dons.forEach(x=>{items[x.id]=Object.assign({},items[x.id],{rel:r})});persist();render();toast("บันทึกความเกี่ยวข้องแล้ว")};
     s.querySelector("#rSave").onclick=()=>{const a=+s.querySelector("#rAmt").value||0;if(a<=0){toast("ใส่จำนวนเงินก่อน");return}
       if(!settings.catsOut.includes(RETURN_CAT))settings.catsOut.push(RETURN_CAT);
       const nt=norm(s.querySelector("#rNote").value);closeSheet();
@@ -591,10 +695,10 @@ function go(v){document.querySelectorAll("section.view").forEach(s=>s.hidden=s.i
 /* export CSV */
 $("btnExport").onclick=()=>{
   const q=v=>'"'+String(v??"").replace(/"/g,'""')+'"';
-  const lines=[["ประเภท","งาน","วันที่","ชื่อ/หมวด","รายละเอียด","รับ","จ่าย","1000","500","100","50","20","เหรียญ"].map(q).join(",")];
+  const lines=[["ประเภท","งาน","วันที่","ชื่อ/หมวด","ความเกี่ยวข้อง","รายละเอียด","รับ","จ่าย","1000","500","100","50","20","เหรียญ"].map(q).join(",")];
   all().sort((a,b)=>a.ts-b.ts).forEach(x=>{
-    if(x.kind==="don")lines.push(["ซองช่วยงาน",evName(x.eventId),new Date(x.ts).toLocaleString("th-TH"),x.name,x.note,x.amount,"",...DENOMS.map(d=>x.notes?.[d]||""),x.coins||""].map(q).join(","));
-    else lines.push([x.type==="in"?"รายรับ":"รายจ่าย",evName(x.eventId),new Date(x.ts).toLocaleString("th-TH"),x.cat+(x.person?" - "+x.person:""),x.note,x.type==="in"?x.amount:"",x.type==="out"?x.amount:"","","","","","",""].map(q).join(","));
+    if(x.kind==="don")lines.push(["ซองช่วยงาน",evName(x.eventId),new Date(x.ts).toLocaleString("th-TH"),x.name,x.rel||"",x.note,x.amount,"",...DENOMS.map(d=>x.notes?.[d]||""),x.coins||""].map(q).join(","));
+    else lines.push([x.type==="in"?"รายรับ":"รายจ่าย",evName(x.eventId),new Date(x.ts).toLocaleString("th-TH"),x.cat+(x.person?" - "+x.person:""),"",x.note,x.type==="in"?x.amount:"",x.type==="out"?x.amount:"","","","","","",""].map(q).join(","));
   });
   downloadFile("สมุดซองช่วยงาน.csv","﻿"+lines.join("\n"),"text/csv");
 };

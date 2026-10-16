@@ -2,7 +2,7 @@
 // Environment variables (Vercel → Project → Settings → Environment Variables):
 //   GEMINI_API_KEY   required — from Google AI Studio
 //   GEMINI_MODELS    optional — comma list tried in order when one runs out of quota
-//                    default: gemini-3.6-flash,gemini-2.5-flash,gemini-2.5-flash-lite,gemma-3-27b-it
+//                    default: gemini-3.6-flash,gemini-2.5-flash,gemini-2.5-flash-lite,gemma-4-31b-it,gemma-4-26b-a4b-it
 //   ALLOWED_ORIGINS  optional — comma list of sites allowed to call this, e.g. https://zakaeza-ai.github.io
 
 const PROMPTS = {
@@ -45,7 +45,7 @@ module.exports = async function handler(req, res) {
   if (image.length > 3_500_000) return res.status(413).json({ error: 'image too large' });
 
   const models = (process.env.GEMINI_MODELS || process.env.GEMINI_MODEL ||
-    'gemini-3.6-flash,gemini-2.5-flash,gemini-2.5-flash-lite,gemma-3-27b-it')
+    'gemini-3.6-flash,gemini-2.5-flash,gemini-2.5-flash-lite,gemma-4-31b-it,gemma-4-26b-a4b-it')
     .split(',').map(s => s.trim()).filter(Boolean);
 
   let lastStatus = 502, lastError = 'read failed';

@@ -540,7 +540,7 @@ function renderPeople(){
   });
   all().forEach(x=>{if(x.kind==="tx"&&x.cat===RETURN_CAT&&x.person){const g=groups.get(key(x.person));if(g)g.ret+=+x.amount||0}});
   const arr=[...groups.values()].filter(g=>(!q||key(g.name).includes(q)||key(g.rel).includes(q))&&(!qr||(qr==="__none"?!g.rel:g.rel===qr))).sort((a,b)=>a.name.localeCompare(b.name,"th"));
-  $("peopleList").innerHTML=arr.length?arr.slice(0,300).map(g=>`<button class="env" data-person="${esc(g.name)}"><span class="who"><b>${esc(g.name)}</b><small>${g.rel?`<span class="pill">${esc(g.rel)}</span> `:""}ช่วยมา ${g.n} ครั้ง${g.ret?` · เราช่วยคืนแล้ว ${baht(g.ret)}`:""}</small></span><span class="amt in num">${baht(g.got)}</span></button>`).join(""):
+  $("peopleList").innerHTML=arr.length?arr.slice(0,300).map(g=>`<button class="env" data-person="${esc(g.name)}"><span class="who"><b>${esc(g.name)}</b><small>${g.rel?`<span class="pill">${esc(g.rel)}</span> `:`<span class="hint">ยังไม่ระบุว่ารู้จักทางไหน</span>`}${g.n>1?` · ให้ซองมา ${g.n} ครั้ง`:""}${g.ret?` · เราช่วยคืนแล้ว ${baht(g.ret)}`:""}</small></span><span class="amt in num">${baht(g.got)}</span></button>`).join(""):
     `<div class="empty">${q?"ไม่พบชื่อนี้":"ยังไม่มีรายชื่อผู้ช่วยงาน"}</div>`;
 }
 $("qName").oninput=renderPeople;$("qRel").onchange=renderPeople;

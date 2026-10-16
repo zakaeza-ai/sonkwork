@@ -1,7 +1,8 @@
 // Vercel serverless function: reads an envelope photo or a banknote photo with Gemini.
 // Environment variables (Vercel → Project → Settings → Environment Variables):
 //   GEMINI_API_KEY   required — from Google AI Studio
-//   GEMINI_MODEL     optional — defaults to gemini-3.6-flash
+//   GEMINI_MODELS    optional — comma list tried in order when one runs out of quota
+//                    default: gemini-3.6-flash,gemini-2.5-flash,gemini-2.5-flash-lite,gemma-3-27b-it
 //   ALLOWED_ORIGINS  optional — comma list of sites allowed to call this, e.g. https://zakaeza-ai.github.io
 
 const PROMPTS = {
@@ -43,32 +44,44 @@ module.exports = async function handler(req, res) {
   if (!PROMPTS[kind] || typeof image !== 'string') return res.status(400).json({ error: 'bad request' });
   if (image.length > 3_500_000) return res.status(413).json({ error: 'image too large' });
 
-  const model = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
-  try {
-    const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [
-            { inline_data: { mime_type: 'image/jpeg', data: image } },
-            { text: PROMPTS[kind] },
-          ] }],
-          generationConfig: { responseMimeType: 'application/json', temperature: 0 },
-        }),
+  const models = (process.env.GEMINI_MODELS || process.env.GEMINI_MODEL ||
+    'gemini-3.6-flash,gemini-2.5-flash,gemini-2.5-flash-lite,gemma-3-27b-it')
+    .split(',').map(s => s.trim()).filter(Boolean);
+
+  let lastStatus = 502, lastError = 'read failed';
+  for (const model of models) {
+    const isGemma = model.startsWith('gemma');
+    try {
+      const r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts: [
+              { inline_data: { mime_type: 'image/jpeg', data: image } },
+              { text: PROMPTS[kind] },
+            ] }],
+            generationConfig: isGemma ? { temperature: 0 } : { responseMimeType: 'application/json', temperature: 0 },
+          }),
+        }
+      );
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        lastStatus = r.status === 429 ? 429 : 502;
+        lastError = model + ': ' + (data?.error?.message || r.status);
+        continue; // quota used up or model not available → try the next one
       }
-    );
-    const data = await r.json();
-    if (!r.ok) {
-      const status = r.status === 429 ? 429 : 502;
-      return res.status(status).json({ error: data?.error?.message || 'gemini error' });
+      const text = data?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '';
+      const m = text.match(/\{[\s\S]*\}/);
+      if (!m) { lastError = model + ': no json'; continue; }
+      const out = JSON.parse(m[0]);
+      res.setHeader('X-Model', model);
+      return res.status(200).json(out);
+    } catch (e) {
+      lastError = model + ': ' + (e.message || 'failed');
     }
-    const text = data?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '';
-    const m = text.match(/\{[\s\S]*\}/);
-    if (!m) return res.status(502).json({ error: 'no json' });
-    return res.status(200).json(JSON.parse(m[0]));
-  } catch (e) {
-    return res.status(502).json({ error: 'read failed' });
   }
+  console.error('all models failed:', lastError);
+  return res.status(lastStatus).json({ error: lastError });
 };

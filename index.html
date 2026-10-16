@@ -334,8 +334,36 @@ const THAI=/[฀-๿]/;
 function scoreLine(t){let s=0;if(/^(นาย|นาง|น\.ส|นางสาว|คุณ|ด\.ช|ด\.ญ|ร\.ต|พ\.ต|จ\.ส|ส\.ต|ผอ|ครู|อ\.)/.test(t))s+=5;
   if(/(ม\.|หมู่|ต\.|อ\.|จ\.|ตำบล|อำเภอ|จังหวัด|บ้านเลขที่|\d{3,})/.test(t))s-=3;
   const th=(t.match(/[฀-๿]/g)||[]).length;s+=Math.min(th,20)/5;if(/\s/.test(t))s+=1;return s}
+const API_URL="/api/read";
+function blobToB64(b){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result).split(",")[1]);r.onerror=rej;r.readAsDataURL(b)})}
+async function shrinkColor(file){return new Promise((res,rej)=>{const img=new Image();const url=URL.createObjectURL(file);
+  img.onload=()=>{const m=1600,r=Math.min(1,m/Math.max(img.width,img.height));const c=document.createElement("canvas");
+    c.width=Math.round(img.width*r);c.height=Math.round(img.height*r);c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+    URL.revokeObjectURL(url);c.toBlob(b=>b?res(b):rej(new Error("img")),"image/jpeg",.85)};
+  img.onerror=()=>rej(new Error("img"));img.src=url})}
+async function askGemini(kind,file){
+  const image=await blobToB64(await shrinkColor(file));
+  const ctl=new AbortController();const t=setTimeout(()=>ctl.abort(),30000);
+  try{const r=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({kind,image}),signal:ctl.signal});
+    if(!r.ok){const e=new Error("http");e.status=r.status;throw e}return await r.json()}finally{clearTimeout(t)}
+}
 async function readEnvelope(file){
   $("ocrLines").innerHTML="";
+  ocrStatus("กำลังอ่านหน้าซองด้วย AI...");
+  try{
+    const r=await askGemini("envelope",file);
+    if(r&&r.name){
+      $("eName").value=norm(r.name);showMatches();$("eName").dispatchEvent(new Event("change"));
+      if(r.relation)$("eRel").value=norm(r.relation);
+      if(r.note&&!$("eNote").value)$("eNote").value=norm(r.note);
+      if(r.amount&&!+$("eAmount").value)$("eAmount").value=+r.amount;
+      ocrStatus("อ่านได้: "+norm(r.name)+(r.amount?" · "+baht(r.amount):"")+(r.sure===false?" (ไม่แน่ใจ ตรวจอีกครั้ง)":" ตรวจก่อนบันทึก"));
+      return;
+    }
+    ocrStatus("AI อ่านชื่อไม่ออก ลองถ่ายใหม่ให้ชัดขึ้น");return;
+  }catch(e){
+    if(e.status===429){ocrStatus("โควตา AI วันนี้หมดแล้ว ใช้ตัวอ่านในเครื่องแทน...")}
+  }
   try{
     const w=await getWorker();ocrStatus("กำลังอ่านหน้าซอง...");
     const canvas=await prepImage(file);
@@ -386,6 +414,7 @@ async function openCashScanner(){
     <p class="hint">วางธนบัตรทีละใบบนกระดาษขาว ให้เต็มกรอบ ในที่สว่าง แล้วกด "นับใบนี้" ถ้าโปรแกรมทายผิด แตะชนิดที่ถูกแทนได้</p>
     <div class="cam"><video id="camV" playsinline muted autoplay></video><div class="frame"></div><div class="det" id="camDet">กำลังเปิดกล้อง...</div></div>
     <button class="btn primary block" id="camAdd">นับใบนี้</button>
+    <label class="btn block" style="text-align:center">หรือถ่ายรูปเงินทั้งหมดให้ AI นับ<input type="file" accept="image/*" capture="environment" id="camAI" hidden></label>
     <div class="row" id="camPick">${DENOMS.map(d=>`<button class="chip d${d} grow" data-pick="${d}" style="padding:10px">${d}</button>`).join("")}</div>
     <div class="denoms" id="camCounts"></div>
     <div class="row"><button class="btn grow" id="camUndo">ยกเลิกใบล่าสุด</button><button class="btn primary grow" id="camDone">เสร็จ</button></div>`,stopCam);
@@ -407,6 +436,13 @@ async function openCashScanner(){
   s.querySelector("#camPick").onclick=e=>{const b=e.target.closest("[data-pick]");if(b)add(+b.dataset.pick)};
   s.querySelector("#camUndo").onclick=()=>{const d=hist.pop();if(d){envCounts[d]=Math.max(0,envCounts[d]-1);renderEnvDenoms();recalc();showCounts()}};
   s.querySelector("#camDone").onclick=closeSheet;
+  s.querySelector("#camAI").onchange=async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;
+    det.textContent="AI กำลังนับเงิน...";
+    try{const r=await askGemini("cash",f);
+      DENOMS.forEach(d=>envCounts[d]=Math.max(0,parseInt(r?.[d]??r?.[String(d)]??0)||0));hist.length=0;
+      $("eCoins").value=+r?.coins||"";renderEnvDenoms();recalc();showCounts();
+      det.textContent="AI นับได้ "+baht($("eAmount").value)+(r?.sure===false?" (ไม่แน่ใจ)":"");toast("AI นับได้ "+baht($("eAmount").value)+" ตรวจกับเงินจริงด้วย");
+    }catch(x){det.textContent=x.status===429?"โควตา AI วันนี้หมดแล้ว นับทีละใบแทน":"AI นับไม่สำเร็จ นับทีละใบแทน"}};
 }
 $("btnCash").onclick=openCashScanner;
 

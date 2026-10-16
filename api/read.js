@@ -19,6 +19,23 @@ const PROMPTS = {
     'ตอบเป็น JSON เท่านั้น: {"1000": int, "500": int, "100": int, "50": int, "20": int, "coins": number, "sure": boolean}',
 };
 
+// Pull the answer object out of a reply that may carry extra text or a code fence.
+function pickJson(text) {
+  const tries = [];
+  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence) tries.push(fence[1]);
+  tries.push(text);
+  const objs = text.match(/\{[^{}]*\}/g) || [];
+  tries.push(...objs.reverse());
+  for (const t of tries) {
+    try {
+      const v = JSON.parse(t.trim().slice(t.trim().indexOf('{'), t.trim().lastIndexOf('}') + 1));
+      if (v && typeof v === 'object') return v;
+    } catch (_) {}
+  }
+  return null;
+}
+
 function cors(req, res) {
   const allowed = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
   const origin = req.headers.origin || '';
@@ -72,10 +89,10 @@ module.exports = async function handler(req, res) {
         lastError = model + ': ' + (data?.error?.message || r.status);
         continue; // quota used up or model not available → try the next one
       }
-      const text = data?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '';
-      const m = text.match(/\{[\s\S]*\}/);
-      if (!m) { lastError = model + ': no json'; continue; }
-      const out = JSON.parse(m[0]);
+      const parts = data?.candidates?.[0]?.content?.parts || [];
+      const text = parts.filter(p => !p.thought).map(p => p.text || '').join('');
+      const out = pickJson(text);
+      if (!out) { lastError = model + ': no json'; continue; }
       res.setHeader('X-Model', model);
       return res.status(200).json(out);
     } catch (e) {
